@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
 import { type } from "os";
@@ -10,9 +10,9 @@ type SquareProps = {
   onClick: () => void;
 };
 
-type BoardState = {
+type BoardProps = {
   squares: SquareType[];
-  xIsNext: boolean;
+  onClick: (i: number) => void;
 };
 
 const BoardValue = {
@@ -21,133 +21,105 @@ const BoardValue = {
 };
 
 // ます目を表すクラス
-function Square(props: SquareProps) {
+const Square: React.FC<SquareProps> = ({ value, onClick }) => {
   return (
-    <button className="square" onClick={props.onClick}>
-      {props.value}
+    <button className="square" onClick={onClick}>
+      {value}
     </button>
   );
-}
+};
 
 // ゲーム全体を表示するクラス
-class Board extends React.Component<any, BoardState> {
-  renderSquare(i: number) {
-    return (
-      <Square
-        value={this.props.squares[i]}
-        onClick={() => this.props.onClick(i)}
-      />
-    );
-  }
-
-  render() {
-    return (
-      <div>
-        <div className="board-row">
-          {this.renderSquare(0)}
-          {this.renderSquare(1)}
-          {this.renderSquare(2)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(3)}
-          {this.renderSquare(4)}
-          {this.renderSquare(5)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(6)}
-          {this.renderSquare(7)}
-          {this.renderSquare(8)}
-        </div>
+const Board: React.FC<BoardProps> = ({squares, onClick}) => {
+  const renderSquare = (i: number) => {
+    return <Square value={squares[i]} onClick={() => onClick(i)} />;
+  };
+  return (
+    <div>
+      <div className="board-row">
+        {renderSquare(0)}
+        {renderSquare(1)}
+        {renderSquare(2)}
       </div>
-    );
-  }
-}
+      <div className="board-row">
+        {renderSquare(3)}
+        {renderSquare(4)}
+        {renderSquare(5)}
+      </div>
+      <div className="board-row">
+        {renderSquare(6)}
+        {renderSquare(7)}
+        {renderSquare(8)}
+      </div>
+    </div>
+  );
+};
+
 type HistoryData = {
   squares: SquareType[];
 };
 
-type GameState = {
-  history: HistoryData[];
-  xIsNext: boolean;
-  stepNumber: number;
-};
+type History = HistoryData[];
 
-class Game extends React.Component<any, GameState> {
-  constructor(props: any) {
-    super(props);
-    this.state = {
-      history: [
-        {
-          squares: Array<SquareType>(9).fill(null),
-        },
-      ],
-      xIsNext: true,
-      stepNumber: 0,
-    };
-  }
+const Game = () => {
+  const [history, setHistory] = useState<History>([
+    {
+      squares: Array<SquareType>(9).fill(null),
+    },
+  ]);
+  const [stepNumber, setStepNumber] = useState(0);
+  const [xIsNext, setXIsNext] = useState(true);
 
-  handleClick(i: number): void {
-    const history = this.state.history.slice(0, this.state.stepNumber + 1);
-    const current = history[history.length - 1];
+  const handleClick = (i: number) => {
+    const history1 = history.slice(0, stepNumber + 1);
+    const current = history1[history1.length - 1];
     const squares = current.squares.slice();
     if (calculateWinner(squares) || squares[i]) {
       return;
     }
-    squares[i] = this.state.xIsNext ? BoardValue.PLAYER1 : BoardValue.PLAYER2;
-    this.setState({
-      history: history.concat([
-        {
-          squares: squares,
-        },
-      ]),
-      xIsNext: !this.state.xIsNext,
-      stepNumber: history.length,
-    });
-  }
+    squares[i] = xIsNext ? BoardValue.PLAYER1 : BoardValue.PLAYER2;
+    setHistory(history.concat([{ squares: squares }]));
+    setXIsNext(!xIsNext);
+    setStepNumber(history.length);
+  };
 
-  jumpTo(step: number) {
-    this.setState({
-      stepNumber: step,
-      xIsNext: step % 2 === 0,
-    });
-  }
+  const jumpTo = (step: number) => {
+    setStepNumber(step);
+    setXIsNext(step % 2 === 0);
+  };
 
-  render() {
-    const history = this.state.history;
-    const current = history[this.state.stepNumber];
-    const winner = calculateWinner(current.squares);
+  const history2 = history;
+  const current = history2[stepNumber];
+  const winner = calculateWinner(current.squares);
 
-    const moves = history.map((step, move) => {
-      const desc = move ? `Go to move #${move}` : "Go to game start";
-      return (
-        <li key={move}>
-          <button onClick={() => this.jumpTo(move)}>{desc}</button>
-        </li>
-      );
-    });
-
-    const status = winner
-      ? `Winner: ${winner}`
-      : `Next player: ${
-          this.state.xIsNext ? BoardValue.PLAYER1 : BoardValue.PLAYER2
-        }`;
-
+  const moves = history.map((step, move) => {
+    const desc = move ? `Go to move #${move}` : "Go to game start";
     return (
-      <div className="game">
-        <div className="game-board">
-          <Board
-            squares={current.squares}
-            onClick={(i: number) => this.handleClick(i)}
-          />
-        </div>
-        <div className="game-info">
-          <div>{status}</div>
-          <ol>{moves}</ol>
-        </div>
-      </div>
+      <li key={move}>
+        <button onClick={() => jumpTo(move)}>{desc}</button>
+      </li>
     );
-  }
-}
+  });
+
+  const status = winner
+    ? `Winner: ${winner}`
+    : `Next player: ${xIsNext ? BoardValue.PLAYER1 : BoardValue.PLAYER2}`;
+
+  return (
+    <div className="game">
+      <div className="game-board">
+        <Board
+          squares={current.squares}
+          onClick={(i: number) => handleClick(i)}
+        />
+      </div>
+      <div className="game-info">
+        <div>{status}</div>
+        <ol>{moves}</ol>
+      </div>
+    </div>
+  );
+};
 
 function calculateWinner(squares: SquareType[]): SquareType {
   const lines = [
